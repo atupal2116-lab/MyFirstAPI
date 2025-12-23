@@ -1,37 +1,47 @@
 from fastapi import FastAPI
+from fastapi.responses import StreamingResponse
 import random
 import string
+import qrcode
+from io import BytesIO
 
-# Fabrikamızın tabelasını asıyoruz
 app = FastAPI()
 
-# 1. Karşılama Kapısı (Ana Sayfa)
+# --- 1. ANA SAYFA ---
 @app.get("/")
 def ana_sayfa():
-    return {"mesaj": "Şifre Üretici API'sine Hoş Geldiniz! /docs adresine giderek deneyin."}
+    return {"mesaj": "Gelişmiş API'ye Hoş Geldiniz! /docs adresine gidin."}
 
-# 2. Üretim Hattı (Şifre Yapan Makine)
+# --- 2. ŞİFRE ÜRETİCİ (Eski Özellik) ---
 @app.get("/generate")
 def sifre_uret(uzunluk: int = 12, rakam_var_mi: bool = True, sembol_var_mi: bool = True):
-    """
-    Bu fonksiyon isteğe göre güçlü bir şifre üretir.
-    """
-    
-    # Harfleri al (a-z, A-Z)
     karakterler = string.ascii_letters 
-    
     if rakam_var_mi:
-        karakterler += string.digits  # 0-9 ekle
-        
+        karakterler += string.digits
     if sembol_var_mi:
-        karakterler += "!@#$%^&*()_+"  # Sembolleri ekle
+        karakterler += "!@#$%^&*()_+"
         
-    # Karıştır ve seç
     sifre = "".join(random.choice(karakterler) for _ in range(uzunluk))
     
-    # Paketi teslim et
     return {
         "sifre": sifre,
         "uzunluk": uzunluk,
         "guvenlik": "Cok Yuksek"
     }
+
+# --- 3. QR KOD ÜRETİCİ (YENİ ÖZELLİK!) ---
+@app.get("/qrcode")
+def qr_uret(metin: str = "https://google.com"):
+    """
+    Verilen metni QR Koda dönüştürür ve RESİM olarak döner.
+    """
+    # 1. QR Kodu oluştur
+    img = qrcode.make(metin)
+    
+    # 2. Resmi bir dosya gibi hafızaya kaydet (Diske değil, RAM'e)
+    buffer = BytesIO()
+    img.save(buffer)
+    buffer.seek(0)
+    
+    # 3. Resmi cevap olarak fırlat
+    return StreamingResponse(buffer, media_type="image/png")
